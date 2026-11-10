@@ -196,23 +196,23 @@ def sum_stats(croms, pos, NCHROMS, target_pos, file_name, croms_exact, min_freq)
     # g_e = h_e.to_genotypes(ploidy=2, copy=True)
 
     # mean_pairwise_distance at target SNP or every SNP in the window
-    pwise_dis = allel.mean_pairwise_difference(ac_e)[0]
-    mean_pwise_dis1 = allel.mean_pairwise_difference(ac1)
-    mean_mean_pwise_dis1, median_mean_pwise_dis1, max_mean_pwise_dis1 = (
-        np.mean(mean_pwise_dis1),
-        np.median(mean_pwise_dis1),
-        np.max(mean_pwise_dis1)
-    )
+    # pwise_dis = allel.mean_pairwise_difference(ac_e)[0]
+    # mean_pwise_dis1 = allel.mean_pairwise_difference(ac1)
+    # mean_mean_pwise_dis1, median_mean_pwise_dis1, max_mean_pwise_dis1 = (
+    #     np.mean(mean_pwise_dis1),
+    #     np.median(mean_pwise_dis1),
+    #     np.max(mean_pwise_dis1)
+    # )
 
     # pi
     #pi_est1 = calc_pi(croms1)
-    pi_est1 = calc_pi(croms1) / 99999 #parameterize instead of hard code for window size changes
+    #pi_est1 = calc_pi(croms1) / 99999 #parameterize instead of hard code for window size changes
 
     # # watterson
-    theta_hat_w1 = allel.watterson_theta(pos1, ac1)
+    #theta_hat_w1 = allel.watterson_theta(pos1, ac1)
 
     # tajimasd
-    TjD1 = allel.tajima_d(ac1)
+    #TjD1 = allel.tajima_d(ac1)
     
     # heterogeneity
     # # obs_het_site = allel.heterozygosity_observed(g_e)[0]
@@ -229,20 +229,29 @@ def sum_stats(croms, pos, NCHROMS, target_pos, file_name, croms_exact, min_freq)
     # # max_obs_exp1 = np.nanmax(ob_exp_het1)
 
     # Haplotype_stats
-    # hh1 = allel.garud_h(h1)
-    # h11 = hh1[0]
-    # h121 = hh1[1]
-    # h1231 = hh1[2]
-    # h2_h11 = hh1[3]
-    # n_hap1 = np.unique(croms1, axis=0).shape[0]
-    # hap_div1 = allel.haplotype_diversity(h1)
+    hh1 = allel.garud_h(h1)
+    h11 = hh1[0]
+    h121 = hh1[1]
+    h1231 = hh1[2]
+    h2_h11 = hh1[3]
+    n_hap1 = np.unique(croms1, axis=0).shape[0]
+    hap_div1 = allel.haplotype_diversity(h1)
 
     # ehh1 = allel.ehh_decay(h1)
     # mean_ehh1 = np.mean(ehh1)
     # median_ehh1 = np.median(ehh1)
-
+    focal = int(np.argmin(np.abs(pos1 - 60000))) #identify target SNP index, genomic position closest to 60 kb
+    right = allel.ehh_decay(h1[focal:])
+    left = allel.ehh_decay(h1[:focal + 1][::-1])
+    ehh_flanks = np.concatenate([left[1:][::-1], right])
+    mean_ehh1 = np.mean(ehh_flanks)
+    median_ehh1 = np.median(ehh_flanks)
+        
     # ihs1 = allel.ihs(h1, pos1, include_edges=True)
     # median_ihs1 = np.nanmedian(ihs1)
+    pos_int = np.rint(pos1).astype(int)
+    ihs1 = allel.ihs(h1, pos_int, include_edges=True)
+    target_ihs = ihs1[focal]
 
     # # nsl
     # nsl1 = allel.nsl(h1)
@@ -280,18 +289,18 @@ def sum_stats(croms, pos, NCHROMS, target_pos, file_name, croms_exact, min_freq)
     # # freq1 > min_freq is required for a center SNP, so these window sites were not targets
     # n_rare = int(np.sum(freq1 <= min_freq))
 
-    stats = [target_pos, file_name, mean_mean_pwise_dis1, median_mean_pwise_dis1, max_mean_pwise_dis1, pi_est1, standard_pi1, TjD1, D, S, n, theta_hat_pi_abs, theta_hat_w_abs, d, d_stdev]
+    stats = [target_pos, file_name, h11, h121, h1231, h2_h11, hap_div1, n_hap1, mean_ehh1, median_ehh1, target_ihs]
     #stats = [target_pos, file_name, pwise_dis, mean_mean_pwise_dis1, median_mean_pwise_dis1, max_mean_pwise_dis1,
         #  TjD1, theta_hat_w1, obs_het_site, mean_obs_het1, median_obs_het1, max_obs_het1, mean_obs_exp1, median_obs_exp1,
-        #  max_obs_exp1, median_r21, h11, h121, h1231, h2_h11, hap_div1, n_hap1, mean_ehh1, median_ehh1, median_ihs1,
-        #  max_nsl1, median_nsl1, ncd11, kellyzn1, Hstat1, Ss1, ZengE1]
+        #  max_obs_exp1, h11, h121, h1231, h2_h11, hap_div1, n_hap1, mean_ehh1, median_ehh1, median_ihs1,
+        #  max_nsl1, median_nsl1, ncd11, median_r21, kellyzn1, Hstat1, Ss1, ZengE1]
 
-    labs = ['Position', 'FileName', 'Mean(MeanPwiseDist)1', 'Median(MeanPwiseDist)1', 'Max(MeanPwiseDist)1', 'Pi', 'StandardPi', 'Tajimas D', 'Tajimas D Test', 'S', 'n', 'theta_pi', 'theta_w', 'pi_minus_w', 'd_stdev']
+    labs = ['Position', 'FileName', 'H1_1', 'H12_1', 'H123_1', 'H2/H1_1', 'Haplotype Diversity1', '# of Hap1', 'Mean(EHH)1', 'Median(EHH)1', 'Target_iHS']
     # labs = ['Position', 'FileName', 'PwiseDist', 'Mean(MeanPwiseDist)1', 'Median(MeanPwiseDist)1', 'Max(MeanPwiseDist)1',
     #     'Tajimas D1', 'Watterson1', 'ObservedHet', 'Mean(ObservedHet)1', 'Median(ObservedHet)1', 'Max(ObservedHet)1',
-    #     'Mean(Obs/Exp Het)1', 'Median(Obs/Exp Het)1', 'Max(Obs/Exp Het)1', 'Median(r2)1', 'H1_1', 'H12_1',
+    #     'Mean(Obs/Exp Het)1', 'Median(Obs/Exp Het)1', 'Max(Obs/Exp Het)1', 'H1_1', 'H12_1',
     #     'H123_1', 'H2/H1_1', 'Haplotype Diversity1', '# of Hap1', 'Mean(EHH)1', 'Median(EHH)1', 'Median(ihs)1',
-    #     'Max(nsl)1', 'Median(nsl)1', 'NCD1_1', 'KellyZns1', 'faywuH1', '#ofSingletons1', 'ZengE1']
+    #     'Max(nsl)1', 'Median(nsl)1', 'NCD1_1', 'Median(r2)1', 'KellyZns1', 'faywuH1', '#ofSingletons1', 'ZengE1']
 
     return labs, stats
 
@@ -326,6 +335,14 @@ class VCF(object):
             haplotypes = haplotypes[:, nonbiallel_pos] #keep SNPs (columns) that are TRUE
             positions = np.array(positions)[nonbiallel_pos].tolist()
             snp_id = np.array(snp_id)[nonbiallel_pos].tolist()
+            
+        # Filter duplicate SNP sites
+        keep = np.unique(positions, return_index=True)[1] #returns indices of unique positions
+        keep.sort()
+        print("Filtering {} duplicate positions..".format(len(positions) - len(keep)))
+        haplotypes = haplotypes[:, keep]
+        positions = np.array(positions)[keep].tolist()
+        snp_id = np.array(snp_id)[keep].tolist()
 
         #Fills in missing haplotypes
         if gts.count_missing():
